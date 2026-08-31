@@ -8,6 +8,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(MSVC)
+    set(SIM_WARNING_FLAGS /W4)
+else()
+    set(SIM_WARNING_FLAGS -Wall -Wextra)
+endif()
+
 add_library(sim_core STATIC
     src/GameTime.cpp
     src/Needs.cpp
@@ -20,12 +26,12 @@ add_library(sim_core STATIC
     src/World.cpp
 )
 target_include_directories(sim_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(sim_core PRIVATE -Wall -Wextra)
+target_compile_options(sim_core PRIVATE ${SIM_WARNING_FLAGS})
 
 add_executable(npc_life_sim src/main.cpp)
 target_link_libraries(npc_life_sim PRIVATE sim_core)
-target_compile_options(npc_life_sim PRIVATE -Wall -Wextra)
+target_compile_options(npc_life_sim PRIVATE ${SIM_WARNING_FLAGS})
 
 add_executable(npc_life_sim_interactive src/interactive_main.cpp)
 target_link_libraries(npc_life_sim_interactive PRIVATE sim_core)
-target_compile_options(npc_life_sim_interactive PRIVATE -Wall -Wextra)
+target_compile_options(npc_life_sim_interactive PRIVATE ${SIM_WARNING_FLAGS})
