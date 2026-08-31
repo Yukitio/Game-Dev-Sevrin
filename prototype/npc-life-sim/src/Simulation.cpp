@@ -35,8 +35,28 @@ void Simulation::AddLocation(Location location) {
     locations_[location.id] = std::move(location);
 }
 
+void Simulation::AddEvent(CalendarEvent event) {
+    events_.push_back(std::move(event));
+}
+
+Npc* Simulation::FindNpc(const std::string& id) {
+    for (auto& npc : npcs_) {
+        if (npc.id == id) return &npc;
+    }
+    return nullptr;
+}
+
+std::string Simulation::LocationName(const std::string& id) const {
+    auto it = locations_.find(id);
+    return it != locations_.end() ? it->second.name : id;
+}
+
 void Simulation::Log(const std::string& message) {
     eventLog_.push_back("[" + clock_.ToString() + "] " + message);
+}
+
+void Simulation::Announce(const std::string& message) {
+    Log(message);
 }
 
 void Simulation::UpdateNeedsAndActivity(Npc& npc) {
@@ -187,6 +207,94 @@ void Simulation::ResolveInteractions() {
     }
 }
 
+void Simulation::ResolveCalendarEvents() {
+    for (auto& event : events_) {
+        if (event.effect && event.IsDue(clock_)) {
+            event.effect(*this);
+        }
+    }
+}
+
+std::string Simulation::Intervene_Encourage(const std::string& aId, const std::string& bId) {
+    Npc* a = FindNpc(aId);
+    Npc* b = FindNpc(bId);
+    if (!a || !b) return "No such NPCs.";
+
+    Relationship& ab = a->RelationshipWith(b->id);
+    Relationship& ba = b->RelationshipWith(a->id);
+    constexpr float kDelta = 15.0f;
+    ab.affinity = std::clamp(ab.affinity + kDelta, -100.0f, 100.0f);
+    ba.affinity = std::clamp(ba.affinity + kDelta, -100.0f, 100.0f);
+    ab.trust = std::clamp(ab.trust + kDelta * 0.4f, 0.0f, 100.0f);
+    ba.trust = std::clamp(ba.trust + kDelta * 0.4f, 0.0f, 100.0f);
+    ab.interactionCount++;
+    ba.interactionCount++;
+
+    if (ab.type != RelationshipType::Romantic) {
+        RelationshipType classified = ClassifyRelationship(ab);
+        ab.type = classified;
+        ba.type = classified;
+    }
+
+    ProgressGoal(*a, *b, kDelta);
+    ProgressGoal(*b, *a, kDelta);
+
+    std::string msg = "[PLAYER] You spend time bringing " + a->name + " and " + b->name + " closer together.";
+    Log(msg);
+    return msg;
+}
+
+std::string Simulation::Intervene_Discourage(const std::string& aId, const std::string& bId) {
+    Npc* a = FindNpc(aId);
+    Npc* b = FindNpc(bId);
+    if (!a || !b) return "No such NPCs.";
+
+    Relationship& ab = a->RelationshipWith(b->id);
+    Relationship& ba = b->RelationshipWith(a->id);
+    constexpr float kDelta = -20.0f;
+    ab.affinity = std::clamp(ab.affinity + kDelta, -100.0f, 100.0f);
+    ba.affinity = std::clamp(ba.affinity + kDelta, -100.0f, 100.0f);
+    ab.trust = std::clamp(ab.trust + kDelta * 0.5f, 0.0f, 100.0f);
+    ba.trust = std::clamp(ba.trust + kDelta * 0.5f, 0.0f, 100.0f);
+
+    RelationshipType before = ab.type;
+    RelationshipType classified = before;
+    if (before == RelationshipType::Romantic) {
+        if (ab.affinity < 50.0f) classified = RelationshipType::Friend;
+    } else {
+        classified = ClassifyRelationship(ab);
+    }
+    ab.type = classified;
+    ba.type = classified;
+
+    for (auto* npc : {a, b}) {
+        const Npc* other = npc == a ? b : a;
+        for (auto& goal : npc->goals) {
+            if (goal.completed || goal.targetNpcId != other->id) continue;
+            if (goal.type == GoalType::Friendship || goal.type == GoalType::Romance) {
+                goal.progress = std::max(0.0f, goal.progress - 25.0f);
+            }
+        }
+    }
+
+    std::string msg = "[PLAYER] You sow doubt between " + a->name + " and " + b->name + ".";
+    Log(msg);
+    if (before == RelationshipType::Romantic && classified != RelationshipType::Romantic) {
+        Log(a->name + " and " + b->name + "'s romance falls apart.");
+    }
+    return msg;
+}
+
+std::string Simulation::Intervene_Assist(const std::string& npcId, NeedType need, float amount) {
+    Npc* npc = FindNpc(npcId);
+    if (!npc) return "No such NPC.";
+
+    npc->needs.Adjust(need, amount);
+    std::string msg = "[PLAYER] You help " + npc->name + " with their " + ToString(need) + ".";
+    Log(msg);
+    return msg;
+}
+
 void Simulation::Tick() {
     if (clock_.hour == 0) {
         interactedToday_.clear();
@@ -210,6 +318,8 @@ void Simulation::Tick() {
             }
         }
     }
+
+    ResolveCalendarEvents();
 
     clock_.hour++;
     if (clock_.hour >= kHoursPerDay) {

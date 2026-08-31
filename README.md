@@ -7,4 +7,4 @@ one person who can intervene in that world, not its center.
 
 - Design doc: [`docs/GDD.md`](docs/GDD.md) (source deck: [`docs/Living_World_RPG_GDD.pptx`](docs/Living_World_RPG_GDD.pptx))
 - Engine: Unreal Engine 5.5.4, primarily in C++
-- Prototype 1 (NPC life simulation): [`prototype/npc-life-sim`](prototype/npc-life-sim)
+- Prototypes 1–3 (NPC life, calendar, player intervention): [`prototype/npc-life-sim`](prototype/npc-life-sim)
