@@ -1,5 +1,6 @@
 #include "LivingWorldSimSubsystem.h"
 
+#include "Sim/Simulation.h"
 #include "Sim/World.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
