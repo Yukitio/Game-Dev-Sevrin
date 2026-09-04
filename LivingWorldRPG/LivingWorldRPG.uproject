@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.5",
+	"Category": "",
+	"Description": "Living World RPG -- a solo-developed fantasy RPG where ancient gods, magical technology, giant mechs, and spaceships coexist.",
+	"Modules": [
+		{
+			"Name": "LivingWorldRPG",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Paper2D",
+			"Enabled": true
+		}
+	]
+}
