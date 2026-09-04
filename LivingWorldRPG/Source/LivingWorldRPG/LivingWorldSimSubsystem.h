@@ -4,11 +4,8 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Templates/UniquePtr.h"
 #include "TimerManager.h"
+#include "Sim/Simulation.h"
 #include "LivingWorldSimSubsystem.generated.h"
-
-namespace sim {
-class Simulation;
-}
 
 USTRUCT(BlueprintType)
 struct FLivingWorldGoalSnapshot
