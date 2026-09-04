@@ -4,6 +4,11 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "LivingWorldAbilityComponent.h"
+#include "LivingWorldAttributeComponent.h"
+#include "LivingWorldCombatComponent.h"
+#include "LivingWorldEquipmentComponent.h"
+#include "LivingWorldProgressionComponent.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
 
@@ -18,6 +23,12 @@ ALivingWorldSpriteCharacterBase::ALivingWorldSpriteCharacterBase() {
 
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
+
+	AttributeComponent = CreateDefaultSubobject<ULivingWorldAttributeComponent>(TEXT("AttributeComponent"));
+	EquipmentComponent = CreateDefaultSubobject<ULivingWorldEquipmentComponent>(TEXT("EquipmentComponent"));
+	CombatComponent = CreateDefaultSubobject<ULivingWorldCombatComponent>(TEXT("CombatComponent"));
+	ProgressionComponent = CreateDefaultSubobject<ULivingWorldProgressionComponent>(TEXT("ProgressionComponent"));
+	AbilityComponent = CreateDefaultSubobject<ULivingWorldAbilityComponent>(TEXT("AbilityComponent"));
 }
 
 void ALivingWorldSpriteCharacterBase::Tick(float DeltaSeconds) {

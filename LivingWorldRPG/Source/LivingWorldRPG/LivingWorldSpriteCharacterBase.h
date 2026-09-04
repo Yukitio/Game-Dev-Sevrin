@@ -6,6 +6,11 @@
 
 class UPaperFlipbookComponent;
 class UPaperFlipbook;
+class ULivingWorldAttributeComponent;
+class ULivingWorldEquipmentComponent;
+class ULivingWorldCombatComponent;
+class ULivingWorldProgressionComponent;
+class ULivingWorldAbilityComponent;
 
 // Shared base for every 2D sprite character (player and NPCs) moving through the
 // full 3D level -- the "2D character in a 3D world" look. No art is required to
@@ -37,6 +42,24 @@ protected:
 	// Details panel (or override per-Blueprint-subclass) once character art exists.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Living World|Animation")
 	TMap<FString, TObjectPtr<UPaperFlipbook>> ActivityFlipbooks;
+
+	// RPG systems (Prototype 5) -- present on every sprite character, player and
+	// NPCs alike, so any NPC can be a combatant. See the individual component
+	// headers for what each one does.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
+	TObjectPtr<ULivingWorldAttributeComponent> AttributeComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
+	TObjectPtr<ULivingWorldEquipmentComponent> EquipmentComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
+	TObjectPtr<ULivingWorldCombatComponent> CombatComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
+	TObjectPtr<ULivingWorldProgressionComponent> ProgressionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
+	TObjectPtr<ULivingWorldAbilityComponent> AbilityComponent;
 
 private:
 	// Keeps the sprite facing the active camera around the yaw axis (so it always

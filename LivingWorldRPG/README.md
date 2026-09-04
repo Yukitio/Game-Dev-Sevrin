@@ -3,22 +3,17 @@
 A base Unreal Engine 5.5.4 project wiring up the [`prototype/npc-life-sim`](../prototype/npc-life-sim)
 simulation as a real, playable-in-editor foundation: a 2D sprite character
 (player and 5 NPCs) moving through a full 3D level, with the NPC
-simulation running underneath and driving their animation state. No art
+simulation running underneath and driving their animation state, plus a
+standard RPG layer (combat, equipment, magic, progression) on top. No art
 exists yet -- every place art belongs is an explicit, empty slot you fill
 in from the editor, not something to add later by changing code.
 
-## Before you open this
-
-**None of this has been compiled or run.** It was written without access
-to Unreal Engine, so treat it as a careful first draft, not a verified
-build. It follows standard UE5.5 C++ project conventions throughout, and
-one deliberate choice keeps the risk contained: everything is plain C++
-and `.ini` config -- no Blueprints, no Enhanced Input assets, nothing
-binary -- so if something doesn't compile, the fix is visible in a normal
-compiler error, not hidden in an opaque `.uasset`.
-
-If it doesn't compile cleanly first try, the most likely spots are noted
-in [Known risk areas](#known-risk-areas) below.
+**Status: builds and runs.** The core project (simulation subsystem,
+character classes, GameMode auto-spawning the 5 NPCs) has been verified
+compiling and playing in the editor (UE 5.5.4, MSVC). The RPG systems
+below (Prototype 5) are new since that verification and follow the same
+conventions, but haven't been run yet -- see
+[Known risk areas](#known-risk-areas).
 
 ## Required editor setup (do this once)
 
@@ -30,27 +25,24 @@ left:
 
 1. Open `LivingWorldRPG.uproject`. Let it build (first build will be
    slow -- it's compiling the engine's shader cache and this module).
-2. If prompted "this project was made with a different engine version",
-   accept -- `EngineAssociation` is set to `5.5`, adjust if you're on a
-   different 5.5.x point release.
-3. In the editor: **File > New Level > Empty Level**.
-4. Add a floor (any flat StaticMeshActor, scaled up, or a Landscape),
+2. In the editor: **File > New Level > Empty Level**.
+3. Add a floor (any flat StaticMeshActor, scaled up, or a Landscape),
    a Directional Light, and a Player Start.
-5. Save the level as `Content/Maps/TestLevel` (that exact path -- it's
+4. Save the level as `Content/Maps/TestLevel` (that exact path -- it's
    already wired as the default map in `Config/DefaultEngine.ini`).
-6. Hit Play. You should see a capsule-shaped player (invisible sprite,
-   no art yet) that can walk around with WASD, and 5 NPC actors spawned
-   near the origin, each silently ticking through the simulation.
+5. Hit Play, then **click inside the viewport** to give it input focus.
+   WASD moves the player; **left mouse button** (or gamepad face button
+   south) triggers a melee attack via the new CombatComponent. Check the
+   Outliner to confirm the 5 NPC actors spawned.
 
-That's it -- no manual NPC placement, no Blueprint wiring. `ALivingWorldGameMode`
-spawns one `ALivingWorldNpcCharacter` per NPC registered in the simulation
-(see [Sim/World.cpp](Source/LivingWorldRPG/Sim/World.cpp)) automatically
-at `BeginPlay`.
+`ALivingWorldGameMode` spawns one `ALivingWorldNpcCharacter` per NPC
+registered in the simulation (see
+[Sim/World.cpp](Source/LivingWorldRPG/Sim/World.cpp)) automatically at
+`BeginPlay` -- no manual NPC placement, no Blueprint wiring required.
 
 ## Inserting art
 
-This is the part you asked about directly -- nothing here requires
-touching C++ once art exists.
+Nothing here requires touching C++ once art exists.
 
 **Character sprites and animation** (`ALivingWorldSpriteCharacterBase`,
 in [`LivingWorldSpriteCharacterBase.h`](Source/LivingWorldRPG/LivingWorldSpriteCharacterBase.h)):
@@ -75,6 +67,42 @@ applied to level geometry -- blockout meshes, a skybox/backdrop, or a
 Landscape -- authored entirely in the editor. No C++ involved on this side
 at all.
 
+## RPG systems (Prototype 5)
+
+Per the GDD's Core RPG Loop ("traditional RPG progression sits underneath"
+the living-world loop), every sprite character -- player and NPCs alike,
+so any NPC can be a combatant, boss, or vendor -- carries five components,
+all in [`Source/LivingWorldRPG/`](Source/LivingWorldRPG):
+
+| Component | Does |
+|---|---|
+| `ULivingWorldAttributeComponent` | Health, Mana, Attack, Defense. `ApplyDamage`/`Heal`/`SpendMana`, `OnDeath`/`OnHealthChanged` delegates. |
+| `ULivingWorldEquipmentComponent` | Equips `ULivingWorldEquippableItem` assets per slot (Weapon/Armor/Accessory), aggregates their stat modifiers into the AttributeComponent. |
+| `ULivingWorldCombatComponent` | `TryMeleeAttack()` -- cooldown-gated sweep in front of the owner, applies `GetTotalAttack()` to whatever it hits. Bound to left-click on the player. |
+| `ULivingWorldProgressionComponent` | `GainExperience()`, level-up loop with a growing XP threshold, linear stat growth per level. |
+| `ULivingWorldAbilityComponent` | Holds a list of `ULivingWorldAbility` (mana cost + cooldown + `Activate`), gates activation the same way combat does. |
+
+None of this depends on art -- it's already fully playable with invisible
+capsules, exactly like the NPC simulation itself.
+
+### The template pattern (for the world/character mass-production tools)
+
+`ULivingWorldEquippableItem` (in
+[`LivingWorldEquipment.h`](Source/LivingWorldRPG/LivingWorldEquipment.h))
+is a `UPrimaryDataAsset`, not a UObject or a struct. That's deliberate: it
+means a sword, a shield, or a ring is a **Data Asset you create in the
+Content Browser** (right-click > Miscellaneous > Data Asset > pick the
+class, fill in the fields) -- no C++ and no Blueprint graph needed per
+item. `ULivingWorldAbility` is `Blueprintable` for the same reason at one
+level up (new spells as Blueprint subclasses when C++ isn't warranted).
+
+This is the pattern the planned **world-building template** and
+**character mass-production template** systems will extend: define an
+NPC archetype or a location layout once as a Data Asset class in C++
+(personality ranges, occupation, starting equipment, schedule shape), then
+let content scale as data instances instead of hand-written `BuildTown()`
+C++ entries -- the same move already made here for items.
+
 ## Architecture
 
 ```
@@ -84,9 +112,16 @@ Source/LivingWorldRPG/
   Sim/                           sim_core, ported unmodified from prototype/npc-life-sim
   LivingWorldSimSubsystem        UGameInstanceSubsystem owning + ticking sim::Simulation,
                                   exposing it to Blueprint/gameplay code
-  LivingWorldSpriteCharacterBase Shared 2D-sprite-in-3D-space character (player + NPCs)
+  LivingWorldSpriteCharacterBase Shared 2D-sprite-in-3D-space character (player + NPCs),
+                                  owns all 5 RPG components below
+  LivingWorldAttributeComponent  Health / Mana / Attack / Defense
+  LivingWorldEquipment(Component) Equippable item Data Asset + the component wearing them
+  LivingWorldCombatComponent     Melee attack
+  LivingWorldProgressionComponent XP and leveling
+  LivingWorldAbility(Component)  Magic/abilities base + the component casting them
+  LivingWorldFireboltAbility     One concrete example ability
   LivingWorldNpcCharacter        Binds to one NPC id, polls its activity each tick
-  LivingWorldPlayerCharacter     Camera boom + WASD movement
+  LivingWorldPlayerCharacter     Camera boom + WASD movement + attack input
   LivingWorldGameMode            Spawns one NPC actor per simulation NPC at BeginPlay
 ```
 
@@ -102,26 +137,20 @@ ready to wire into UI or gameplay triggers once those exist.
 
 ## Known risk areas
 
-Two things in this scaffold are worth checking first if something looks
-wrong once you can actually see it running -- everything else here is
-fairly mechanical UE5 boilerplate and low-risk by comparison:
+- **The RPG components (this update) haven't been compiled yet.** They
+  follow the same conventions already verified working in the base
+  project (forward declarations for pointer `UPROPERTY`s, full includes
+  only where a complete type is actually needed, no UObject pointers as
+  reflected `TMap` keys). If something doesn't compile, paste the error
+  the same way as before -- the fixes so far have all been one missing
+  include or one UE-reflection edge case, not a design problem.
+- **`ALivingWorldSpriteCharacterBase::FaceActiveCamera()`**: rotates the
+  flipbook to face the camera and flips it horizontally by movement
+  direction. Paper2D's default sprite-plane orientation and which axis
+  reads as "flipped" can vary by project setup -- once real art is in,
+  this is the first place to check if a character looks edge-on or flips
+  the wrong way.
 
-- **`ALivingWorldSpriteCharacterBase::FaceActiveCamera()`** (in
-  [`LivingWorldSpriteCharacterBase.cpp`](Source/LivingWorldRPG/LivingWorldSpriteCharacterBase.cpp)):
-  rotates the flipbook to face the camera and flips it horizontally by
-  movement direction. Paper2D's default sprite-plane orientation and which
-  axis reads as "flipped" can vary by project setup -- if characters look
-  edge-on or flip the wrong way, this function is where to look; it's a
-  sign/axis fix, not a structural one.
-- **First compile**: this was written to standard UE 5.5 conventions
-  (verified against the module/target file format, Paper2D API surface,
-  and known member-initialization gotchas like the `TUniquePtr`-to-forward-declared-type
-  destructor issue already fixed in `LivingWorldSimSubsystem`), but wasn't
-  run through the actual compiler. A missing include or a renamed API
-  between engine versions is the most likely failure mode, and the error
-  will point straight at the line.
-
-Report back anything that doesn't compile -- that feedback is genuinely
-useful, not just "the AI got it wrong": it's the only way to close the gap
-between "written correctly" and "verified correctly" for this part of the
-project.
+Report back anything that doesn't compile or look right once you can see
+it running -- that feedback is what actually closes the gap between
+"written correctly" and "verified correctly."

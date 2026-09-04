@@ -4,6 +4,7 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "LivingWorldCombatComponent.h"
 
 ALivingWorldPlayerCharacter::ALivingWorldPlayerCharacter() {
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -26,6 +27,7 @@ void ALivingWorldPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &ALivingWorldPlayerCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ALivingWorldPlayerCharacter::MoveRight);
+	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ALivingWorldPlayerCharacter::PerformAttack);
 }
 
 void ALivingWorldPlayerCharacter::MoveForward(float Value) {
@@ -41,5 +43,11 @@ void ALivingWorldPlayerCharacter::MoveRight(float Value) {
 		const FRotator YawRotation(0.0f, CameraBoom->GetComponentRotation().Yaw, 0.0f);
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		AddMovementInput(Direction, Value);
+	}
+}
+
+void ALivingWorldPlayerCharacter::PerformAttack() {
+	if (CombatComponent) {
+		CombatComponent->TryMeleeAttack();
 	}
 }
