@@ -8,12 +8,27 @@ standard RPG layer (combat, equipment, magic, progression) on top. No art
 exists yet -- every place art belongs is an explicit, empty slot you fill
 in from the editor, not something to add later by changing code.
 
-**Status: builds and runs.** The core project (simulation subsystem,
-character classes, GameMode auto-spawning the 5 NPCs) has been verified
-compiling and playing in the editor (UE 5.5.4, MSVC). The RPG systems
-below (Prototype 5) are new since that verification and follow the same
-conventions, but haven't been run yet -- see
-[Known risk areas](#known-risk-areas).
+**Status: builds and runs.** Both the core project (simulation subsystem,
+character classes, GameMode auto-spawning the 5 NPCs) and the RPG systems
+(Prototype 5: combat, equipment, magic, progression) have been verified
+compiling and playing in the editor (UE 5.5.4, MSVC).
+
+## Updating after a new push
+
+Run [`update_and_build.bat`](update_and_build.bat) (double-click it in
+File Explorer, or run it from a terminal) instead of doing this by hand.
+It pulls the latest changes, clears the old build cache (this avoids a
+real bug in Unreal's incremental build system where it can report
+"target is up to date" without actually compiling new files after a
+`git pull`), rebuilds, and prints one of two banners:
+
+- **`BUILD SUCCEEDED`** -- open `LivingWorldRPG.uproject` as normal.
+- **`BUILD FAILED`** -- it prints just the error lines (not the full
+  multi-thousand-line build log) and tells you where the full log is
+  saved. Copy what it shows between the dashed lines and send it over.
+
+Close the editor and Visual Studio before running it, so the build
+tools aren't fighting over locked files.
 
 ## Required editor setup (do this once)
 
@@ -137,13 +152,12 @@ ready to wire into UI or gameplay triggers once those exist.
 
 ## Known risk areas
 
-- **The RPG components (this update) haven't been compiled yet.** They
-  follow the same conventions already verified working in the base
-  project (forward declarations for pointer `UPROPERTY`s, full includes
+- **New code added after this point hasn't been compiled yet.** Any
+  fresh classes/components follow the same conventions already verified
+  working (forward declarations for pointer `UPROPERTY`s, full includes
   only where a complete type is actually needed, no UObject pointers as
-  reflected `TMap` keys). If something doesn't compile, paste the error
-  the same way as before -- the fixes so far have all been one missing
-  include or one UE-reflection edge case, not a design problem.
+  reflected `TMap` keys), but "written correctly" and "verified" are
+  different things until `update_and_build.bat` says `BUILD SUCCEEDED`.
 - **`ALivingWorldSpriteCharacterBase::FaceActiveCamera()`**: rotates the
   flipbook to face the camera and flips it horizontally by movement
   direction. Paper2D's default sprite-plane orientation and which axis
