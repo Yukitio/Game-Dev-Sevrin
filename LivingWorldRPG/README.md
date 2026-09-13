@@ -4,14 +4,16 @@ A base Unreal Engine 5.5.4 project wiring up the [`prototype/npc-life-sim`](../p
 simulation as a real, playable-in-editor foundation: a 2D sprite character
 (player and 5 NPCs) moving through a full 3D level, with the NPC
 simulation running underneath and driving their animation state, plus a
-standard RPG layer (combat, equipment, magic, progression) on top. No art
-exists yet -- every place art belongs is an explicit, empty slot you fill
-in from the editor, not something to add later by changing code.
+standard RPG layer (combat, equipment, magic, progression, inventory),
+autonomous NPC movement/combat AI, and a data-driven dialogue system on
+top. No art exists yet -- every place art belongs is an explicit, empty
+slot you fill in from the editor, not something to add later by changing
+code.
 
-**Status: builds and runs.** Both the core project (simulation subsystem,
-character classes, GameMode auto-spawning the 5 NPCs) and the RPG systems
-(Prototype 5: combat, equipment, magic, progression) have been verified
-compiling and playing in the editor (UE 5.5.4, MSVC).
+**Status: RPG systems (Prototype 5) verified compiling and playing in the
+editor (UE 5.5.4, MSVC).** Inventory, NPC AI, and dialogue (this batch) are
+written to the same conventions but **not yet compiled** -- see "Known risk
+areas" below.
 
 ## Updating after a new push
 
@@ -45,10 +47,24 @@ left:
    a Directional Light, and a Player Start.
 4. Save the level as `Content/Maps/TestLevel` (that exact path -- it's
    already wired as the default map in `Config/DefaultEngine.ini`).
-5. Hit Play, then **click inside the viewport** to give it input focus.
+5. Add a **Nav Mesh Bounds Volume** (Place Actors panel > Volumes) covering
+   the walkable area, and press `P` in the viewport to confirm the green
+   navmesh overlay appears. Required for NPC movement (`AAIController::
+   MoveToLocation`/`MoveToActor`) -- without it NPCs will just stand still.
+6. Place one **`ALivingWorldLocationMarker`** actor (Place Actors panel,
+   search "LivingWorldLocationMarker") per location NPCs should walk to,
+   and set its `LocationId` in the Details panel to match an id registered
+   in [`Sim/World.cpp`](Source/LivingWorldRPG/Sim/World.cpp)'s
+   `BuildTown()` (e.g. `"forge"`, `"inn"`, `"farm"`, `"home_maren"`).
+   Optional to start -- NPCs simply stay put for any location with no
+   marker, so this can be filled in incrementally.
+7. Hit Play, then **click inside the viewport** to give it input focus.
    WASD moves the player; **left mouse button** (or gamepad face button
-   south) triggers a melee attack via the new CombatComponent. Check the
-   Outliner to confirm the 5 NPC actors spawned.
+   south) triggers a melee attack; **E** (or gamepad face button north/west,
+   whatever `Gamepad_FaceButton_Top` maps to on your controller) talks to
+   the nearest NPC with a `DialogueRoot` set, once you've created one (see
+   "Dialogue system" below). Check the Outliner to confirm the 5 NPC actors
+   spawned.
 
 `ALivingWorldGameMode` spawns one `ALivingWorldNpcCharacter` per NPC
 registered in the simulation (see
@@ -96,9 +112,75 @@ all in [`Source/LivingWorldRPG/`](Source/LivingWorldRPG):
 | `ULivingWorldCombatComponent` | `TryMeleeAttack()` -- cooldown-gated sweep in front of the owner, applies `GetTotalAttack()` to whatever it hits. Bound to left-click on the player. |
 | `ULivingWorldProgressionComponent` | `GainExperience()`, level-up loop with a growing XP threshold, linear stat growth per level. |
 | `ULivingWorldAbilityComponent` | Holds a list of `ULivingWorldAbility` (mana cost + cooldown + `Activate`), gates activation the same way combat does. |
+| `ULivingWorldInventoryComponent` | Flat list of `FLivingWorldInventorySlot` (item + quantity). `AddItem`/`RemoveItem` stack automatically up to `MaxStackSize`; non-stackable items get their own slot. |
+
+`ULivingWorldEquipmentComponent` also has `EquipFromInventory`/
+`UnequipToInventory`, which move the item to/from the owner's
+`ULivingWorldInventoryComponent` automatically (auto-swapping the previous
+item back to inventory) -- what player-facing UI should call. The older
+`EquipItem`/`UnequipSlot` (ignoring inventory) still work directly, useful
+for e.g. spawning a boss already armed.
 
 None of this depends on art -- it's already fully playable with invisible
 capsules, exactly like the NPC simulation itself.
+
+## NPC AI (movement + combat)
+
+`ALivingWorldNpcCharacter` (in
+[`LivingWorldNpcCharacter.h`](Source/LivingWorldRPG/LivingWorldNpcCharacter.h))
+layers two autonomous behaviors on top of the simulation-driven activity
+state, re-evaluated every `AIThinkInterval` seconds (default 0.5s, tunable
+per-NPC):
+
+- **Routine movement**: walks to wherever the simulation currently says the
+  NPC is, via `ALivingWorldLocationMarker` placed in the level +
+  `ULivingWorldLocationRegistrySubsystem` (a `UWorldSubsystem` that scans
+  for markers once at `BeginPlay` and resolves `LocationId -> FVector`).
+  No marker for the current location yet -> the NPC just doesn't move; safe
+  before level content exists, and locations can be filled in one at a time.
+- **Combat**: NPCs with `bIsHostile = true` (set per-actor or per-Blueprint
+  subclass, default false) scan for the nearest living, non-hostile actor
+  with an `AttributeComponent` within `AggroRange`, then chase and attack
+  it via `ULivingWorldCombatComponent::TryMeleeAttack()`. Non-hostile NPCs
+  (the default) never initiate combat, so ordinary townsfolk are unaffected.
+
+Both rely on `AAIController`/`UNavigationSystem`, so the level needs a **Nav
+Mesh Bounds Volume** (see "Required editor setup" above) for movement to
+actually happen -- without one, NPCs behave exactly as if no location
+markers existed.
+
+## Dialogue system
+
+Conversations are built as a tree of **`ULivingWorldDialogueNode`** Data
+Assets (in
+[`LivingWorldDialogue.h`](Source/LivingWorldRPG/LivingWorldDialogue.h)), the
+same template pattern as items: create one Data Asset per line of dialogue
+in the Content Browser, set its `LineText` and any `Choices`, and link each
+choice's `NextNode` to the next line's Data Asset -- no C++ or Blueprint
+graph needed to write a conversation. Leave a choice's `NextNode` unset to
+end the conversation there.
+
+A choice can optionally trigger one of the simulation's Prototype 3
+intervention calls directly -- `InterventionType` = Encourage/Discourage
+(between the speaking NPC and `InterventionOtherNpcId`) or Assist
+(restores `InterventionNeedName` by `InterventionAmount` on the speaking
+NPC) -- so a conversation choice can actually change the living world, not
+just branch text.
+
+`ULivingWorldDialogueComponent` (on `ALivingWorldPlayerCharacter`) drives
+conversation state and has no on-screen presentation of its own --
+`StartDialogue`/`SelectChoice`/`EndDialogue` are `BlueprintCallable`, and
+it broadcasts `OnDialogueLine(SpeakerName, LineText, ChoiceTexts)` /
+`OnDialogueEnded` for whatever UI gets built later (UMG, or just printing
+to screen for now). To try it before any UI exists, bind those delegates
+in a debug Blueprint, or watch them via a breakpoint/log.
+
+To make an NPC talkable: set its `DialogueRoot` (Details panel) to a
+`ULivingWorldDialogueNode` asset. The player's **E** key
+(`ALivingWorldPlayerCharacter::TryInteract`) finds the nearest NPC with a
+`DialogueRoot` set within `InteractRange` (default 250 units) and starts
+the conversation. NPCs with no `DialogueRoot` are silently skipped -- safe
+to leave unset for NPCs that shouldn't be talked to yet.
 
 ### The template pattern (for the world/character mass-production tools)
 
@@ -135,8 +217,15 @@ Source/LivingWorldRPG/
   LivingWorldProgressionComponent XP and leveling
   LivingWorldAbility(Component)  Magic/abilities base + the component casting them
   LivingWorldFireboltAbility     One concrete example ability
-  LivingWorldNpcCharacter        Binds to one NPC id, polls its activity each tick
-  LivingWorldPlayerCharacter     Camera boom + WASD movement + attack input
+  LivingWorldItem                Base inventory item Data Asset (stackable, icon slot)
+  LivingWorldInventoryComponent  Stack-based item list, AddItem/RemoveItem
+  LivingWorldLocationMarker      Editor-placed actor marking a named location for NPC AI
+  LivingWorldLocationRegistrySubsystem  UWorldSubsystem resolving LocationId -> FVector
+  LivingWorldDialogue            DialogueNode Data Asset + choice/intervention structs
+  LivingWorldDialogueComponent   Drives conversation state, no built-in UI
+  LivingWorldNpcCharacter        Binds to one NPC id, polls its activity each tick,
+                                  routine movement + reactive combat AI
+  LivingWorldPlayerCharacter     Camera boom + WASD movement + attack + interact input
   LivingWorldGameMode            Spawns one NPC actor per simulation NPC at BeginPlay
 ```
 
@@ -152,12 +241,20 @@ ready to wire into UI or gameplay triggers once those exist.
 
 ## Known risk areas
 
-- **New code added after this point hasn't been compiled yet.** Any
-  fresh classes/components follow the same conventions already verified
-  working (forward declarations for pointer `UPROPERTY`s, full includes
-  only where a complete type is actually needed, no UObject pointers as
+- **Inventory, NPC AI, and dialogue (this batch) haven't been compiled
+  yet.** They follow the same conventions already verified working
+  (forward declarations for pointer `UPROPERTY`s, full includes only
+  where a complete type is actually needed, no UObject pointers as
   reflected `TMap` keys), but "written correctly" and "verified" are
   different things until `update_and_build.bat` says `BUILD SUCCEEDED`.
+  Run it and send over anything under `BUILD FAILED`.
+- **NPC AI needs a Nav Mesh Bounds Volume in the level** (see "Required
+  editor setup") -- without one, `AAIController::MoveToLocation`/
+  `MoveToActor` silently fail and NPCs just stand still, which can look
+  identical to "no location marker placed yet."
+- **Dialogue has no built-in UI.** `ULivingWorldDialogueComponent` only
+  broadcasts `OnDialogueLine`/`OnDialogueEnded` -- nothing shows on
+  screen until something (a UMG widget, eventually) binds to them.
 - **`ALivingWorldSpriteCharacterBase::FaceActiveCamera()`**: rotates the
   flipbook to face the camera and flips it horizontally by movement
   direction. Paper2D's default sprite-plane orientation and which axis

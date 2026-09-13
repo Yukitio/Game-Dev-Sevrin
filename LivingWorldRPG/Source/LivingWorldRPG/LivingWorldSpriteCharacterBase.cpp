@@ -8,6 +8,7 @@
 #include "LivingWorldAttributeComponent.h"
 #include "LivingWorldCombatComponent.h"
 #include "LivingWorldEquipmentComponent.h"
+#include "LivingWorldInventoryComponent.h"
 #include "LivingWorldProgressionComponent.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
@@ -29,6 +30,7 @@ ALivingWorldSpriteCharacterBase::ALivingWorldSpriteCharacterBase() {
 	CombatComponent = CreateDefaultSubobject<ULivingWorldCombatComponent>(TEXT("CombatComponent"));
 	ProgressionComponent = CreateDefaultSubobject<ULivingWorldProgressionComponent>(TEXT("ProgressionComponent"));
 	AbilityComponent = CreateDefaultSubobject<ULivingWorldAbilityComponent>(TEXT("AbilityComponent"));
+	InventoryComponent = CreateDefaultSubobject<ULivingWorldInventoryComponent>(TEXT("InventoryComponent"));
 }
 
 void ALivingWorldSpriteCharacterBase::Tick(float DeltaSeconds) {

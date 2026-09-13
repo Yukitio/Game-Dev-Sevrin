@@ -11,6 +11,7 @@ class ULivingWorldEquipmentComponent;
 class ULivingWorldCombatComponent;
 class ULivingWorldProgressionComponent;
 class ULivingWorldAbilityComponent;
+class ULivingWorldInventoryComponent;
 
 // Shared base for every 2D sprite character (player and NPCs) moving through the
 // full 3D level -- the "2D character in a 3D world" look. No art is required to
@@ -60,6 +61,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
 	TObjectPtr<ULivingWorldAbilityComponent> AbilityComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Living World|RPG")
+	TObjectPtr<ULivingWorldInventoryComponent> InventoryComponent;
 
 private:
 	// Keeps the sprite facing the active camera around the yaw axis (so it always

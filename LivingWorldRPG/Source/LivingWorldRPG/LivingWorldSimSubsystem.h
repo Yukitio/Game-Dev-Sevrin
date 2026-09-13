@@ -42,6 +42,12 @@ struct FLivingWorldNpcSnapshot
 	UPROPERTY(BlueprintReadOnly, Category = "Living World")
 	FString CurrentLocationName;
 
+	// Raw location id (e.g. "forge"), for matching against
+	// ALivingWorldLocationMarker::LocationId -- CurrentLocationName above is
+	// the display name (e.g. "The Forge") and not suitable for that lookup.
+	UPROPERTY(BlueprintReadOnly, Category = "Living World")
+	FString CurrentLocationId;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Living World")
 	float Hunger = 0.0f;
 

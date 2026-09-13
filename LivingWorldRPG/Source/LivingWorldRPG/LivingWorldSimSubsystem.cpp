@@ -23,6 +23,7 @@ FLivingWorldNpcSnapshot MakeSnapshot(const sim::Simulation& Simulation, const si
 	Snapshot.Occupation = UTF8_TO_TCHAR(Npc.occupation.c_str());
 	Snapshot.CurrentActivity = UTF8_TO_TCHAR(sim::ToString(Npc.currentActivity).c_str());
 	Snapshot.CurrentLocationName = UTF8_TO_TCHAR(Simulation.LocationName(Npc.currentLocationId).c_str());
+	Snapshot.CurrentLocationId = UTF8_TO_TCHAR(Npc.currentLocationId.c_str());
 	Snapshot.Hunger = Npc.needs.Get(sim::NeedType::Hunger);
 	Snapshot.Energy = Npc.needs.Get(sim::NeedType::Energy);
 	Snapshot.Social = Npc.needs.Get(sim::NeedType::Social);

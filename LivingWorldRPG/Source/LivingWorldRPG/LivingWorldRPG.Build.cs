@@ -11,7 +11,9 @@ public class LivingWorldRPG : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
-			"Paper2D"
+			"Paper2D",
+			"AIModule",
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

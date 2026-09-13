@@ -2,6 +2,7 @@
 
 #include "GameFramework/Actor.h"
 #include "LivingWorldAttributeComponent.h"
+#include "LivingWorldInventoryComponent.h"
 
 void ULivingWorldEquipmentComponent::BeginPlay() {
 	Super::BeginPlay();
@@ -23,6 +24,38 @@ void ULivingWorldEquipmentComponent::UnequipSlot(ELivingWorldEquipmentSlot Slot)
 	if (EquippedItems.Remove(Slot) > 0) {
 		RecalculateModifiers();
 	}
+}
+
+bool ULivingWorldEquipmentComponent::EquipFromInventory(ULivingWorldEquippableItem* Item) {
+	if (!Item) {
+		return false;
+	}
+	AActor* Owner = GetOwner();
+	ULivingWorldInventoryComponent* Inventory = Owner ? Owner->FindComponentByClass<ULivingWorldInventoryComponent>() : nullptr;
+	if (!Inventory || !Inventory->HasItem(Item, 1)) {
+		return false;
+	}
+
+	UnequipToInventory(Item->Slot);
+
+	if (!Inventory->RemoveItem(Item, 1)) {
+		return false;
+	}
+	EquipItem(Item);
+	return true;
+}
+
+bool ULivingWorldEquipmentComponent::UnequipToInventory(ELivingWorldEquipmentSlot Slot) {
+	AActor* Owner = GetOwner();
+	ULivingWorldInventoryComponent* Inventory = Owner ? Owner->FindComponentByClass<ULivingWorldInventoryComponent>() : nullptr;
+	ULivingWorldEquippableItem* Current = GetEquipped(Slot);
+	if (!Inventory || !Current) {
+		return false;
+	}
+
+	UnequipSlot(Slot);
+	Inventory->AddItem(Current, 1);
+	return true;
 }
 
 ULivingWorldEquippableItem* ULivingWorldEquipmentComponent::GetEquipped(ELivingWorldEquipmentSlot Slot) const {

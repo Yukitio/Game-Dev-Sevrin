@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/DataAsset.h"
+#include "LivingWorldItem.h"
 #include "LivingWorldEquipment.generated.h"
 
 UENUM(BlueprintType)
@@ -11,19 +11,13 @@ enum class ELivingWorldEquipmentSlot : uint8 {
 	Accessory
 };
 
-// A piece of equipment as data, not code -- create one of these as a Data Asset
-// in the Content Browser (right-click > Miscellaneous > Data Asset > this class)
-// per item, no C++ or Blueprint required. This is the pattern the character and
-// world "mass production" templates will build on: define the shape once in
-// C++, then let content scale as data.
+// A piece of equipment -- adds stat modifiers and a slot on top of the base
+// item. Still just a Data Asset instance per item, no code needed per sword.
 UCLASS(BlueprintType)
-class LIVINGWORLDRPG_API ULivingWorldEquippableItem : public UPrimaryDataAsset {
+class LIVINGWORLDRPG_API ULivingWorldEquippableItem : public ULivingWorldItem {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	FText DisplayName;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	ELivingWorldEquipmentSlot Slot = ELivingWorldEquipmentSlot::Weapon;
 
