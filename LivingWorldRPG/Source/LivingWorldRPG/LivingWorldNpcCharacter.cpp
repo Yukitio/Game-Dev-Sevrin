@@ -3,6 +3,7 @@
 #include "AIController.h"
 #include "CollisionShape.h"
 #include "Engine/GameInstance.h"
+#include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "LivingWorldAttributeComponent.h"
 #include "LivingWorldCombatComponent.h"
