@@ -7,15 +7,26 @@ set "ENGINE_BUILD_BAT=C:\Game Project Sevrin\UE_5.5\Engine\Build\BatchFiles\Buil
 set "BUILD_LOG=%TEMP%\lwrpg_build.log"
 
 echo ================================================
-echo  Pulling latest changes from GitHub...
+echo  Discarding editor config rewrites...
 echo ================================================
 pushd "%REPO_DIR%"
+rem Just opening the editor / Project Settings rewrites the whole
+rem Config/*.ini (engine defaults included), which otherwise blocks
+rem the pull below with "local changes would be overwritten". If you
+rem deliberately changed a project setting in the editor and want to
+rem keep it, tell Claude about it BEFORE running this script again so
+rem it gets committed properly instead of discarded here.
+git checkout -- LivingWorldRPG/Config
+echo Done.
+
+echo.
+echo ================================================
+echo  Pulling latest changes from GitHub...
+echo ================================================
 git pull origin claude/new-session-un5x84
 if errorlevel 1 (
     echo.
     echo [FAILED] git pull did not complete cleanly - see above.
-    echo If it mentions "local changes would be overwritten", that
-    echo usually means the editor modified a config file on its own.
     popd
     pause
     exit /b 1
