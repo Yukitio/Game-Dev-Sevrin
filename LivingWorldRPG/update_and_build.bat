@@ -46,7 +46,7 @@ echo ================================================
 echo  Building LivingWorldRPG (full rebuild, ~1-2 min)...
 echo  (this is quiet until it finishes - that's normal)
 echo ================================================
-"%ENGINE_BUILD_BAT%" LivingWorldRPGEditor Win64 Development -Project="%PROJECT_DIR%LivingWorldRPG.uproject" -WaitMutex > "%BUILD_LOG%" 2>&1
+call "%ENGINE_BUILD_BAT%" LivingWorldRPGEditor Win64 Development -Project="%PROJECT_DIR%LivingWorldRPG.uproject" -WaitMutex > "%BUILD_LOG%" 2>&1
 set BUILD_RESULT=%errorlevel%
 
 echo.
